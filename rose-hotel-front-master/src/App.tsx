@@ -29,9 +29,12 @@ function App() {
                                 const response = await axios.get(
                                         `${import.meta.env.VITE_API_BASE_URL}${import.meta.env.VITE_RESTAURANTS_ENDPOINT}`
                                 );
-                                const data = Array.isArray(response.data?.data)
-                                        ? response.data.data
-                                        : response.data;
+                                const rawData = response.data;
+                                const data = Array.isArray(rawData?.data)
+                                        ? rawData.data
+                                        : Array.isArray(rawData)
+                                                ? rawData
+                                                : [];
                                 setRestaurants(data);
                         } catch (error) {
                                 console.error("Error fetching restaurants:", error);
