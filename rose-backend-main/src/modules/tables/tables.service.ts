@@ -16,7 +16,12 @@ export class TablesService {
     return this.tableRepository.save(table);
   }
 
-  async findAll() {
+  async findAll(restaurantId?: number) {
+    if (typeof restaurantId === 'number') {
+      return this.tableRepository.find({
+        where: { restaurant: { id: restaurantId } },
+      });
+    }
     return this.tableRepository.find();
   }
 

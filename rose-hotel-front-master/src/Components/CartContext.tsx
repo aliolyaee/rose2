@@ -23,18 +23,32 @@ const CartContext = createContext<CartContextType | undefined>(undefined);
 export function CartProvider({ children }: { children: React.ReactNode }) {
   const [cart, setCart] = useState<{ [key: string]: number }>({});
   const [allMenuItems, setAllMenuItems] = useState<MenuItem[]>([]);
+  const [restaurantId, setRestaurantId] = useState<string | null>(null);
 
   useEffect(() => {
+    const updateRestaurant = () => {
+      setRestaurantId(localStorage.getItem("restaurantId"));
+    };
+    updateRestaurant();
+    window.addEventListener("storage", updateRestaurant);
+    return () => window.removeEventListener("storage", updateRestaurant);
+  }, []);
+
+  useEffect(() => {
+    if (!restaurantId) {
+      setAllMenuItems([]);
+      return;
+    }
     const fetchAllMenuItems = async () => {
       try {
-        // const response = await axios.get("http://localhost:3000/menu/items");
         const response = await axios.get(
-					`${import.meta.env.VITE_API_BASE_URL}${
-						import.meta.env.VITE_MENU_ITEMS_ENDPOINT
-					}`
-				);
+          `${import.meta.env.VITE_API_BASE_URL}${
+            import.meta.env.VITE_MENU_ITEMS_ENDPOINT
+          }`,
+          { params: { restaurantId } }
+        );
         console.log("All Menu Items API Response:", response.data);
-        let items = [];
+        let items = [] as any[];
         if (Array.isArray(response.data)) {
           items = response.data;
         } else if (response.data && typeof response.data === "object") {
@@ -48,7 +62,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       }
     };
     fetchAllMenuItems();
-  }, []);
+  }, [restaurantId]);
 
   return (
     <CartContext.Provider value={{ cart, setCart, allMenuItems }}>

@@ -12,6 +12,11 @@ export class ResturantsController {
     return this.resturantsService.create(dto);
   }
 
+  @Get()
+  findAll() {
+    return this.resturantsService.findAll();
+  }
+
   @Get(':id')
   findOne(@Param('id', ParseIntPipe) id: number) {
     return this.resturantsService.findOne(id);

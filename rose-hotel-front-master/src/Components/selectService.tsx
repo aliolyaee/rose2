@@ -17,39 +17,41 @@ interface Table {
 	description?: string;
 }
 
-const getAllTables = async (sessionId: string) => {
-	try {
-		const response = await axios.get(
-			`${import.meta.env.VITE_API_BASE_URL}${
-				import.meta.env.VITE_TABLES_ENDPOINT
-			}`,
-			{
-				headers: {
-					"x-session-id": sessionId,
-				},
-			}
-		);
-		console.log("Tables API Response:", response.data);
-		return response.data;
-	} catch (error: any) {
-		console.error(
-			"Error fetching tables:",
-			error.response?.data || error.message
-		);
-		toast.error("خطا در دریافت لیست میزها");
-		throw error;
-	}
+const getAllTables = async (sessionId: string, restaurantId: string) => {
+        try {
+                const response = await axios.get(
+                        `${import.meta.env.VITE_API_BASE_URL}${
+                                import.meta.env.VITE_TABLES_ENDPOINT
+                        }`,
+                        {
+                                params: { restaurantId },
+                                headers: {
+                                        "x-session-id": sessionId,
+                                },
+                        }
+                );
+                console.log("Tables API Response:", response.data);
+                return response.data;
+        } catch (error: any) {
+                console.error(
+                        "Error fetching tables:",
+                        error.response?.data || error.message
+                );
+                toast.error("خطا در دریافت لیست میزها");
+                throw error;
+        }
 };
 
 function SelectService() {
-	const { cart, setCart, allMenuItems } = useCart();
-	const [selectedTable, setSelectedTable] = useState("");
+        const { cart, setCart, allMenuItems } = useCart();
+        const [selectedTable, setSelectedTable] = useState("");
 	const [additionalNotes, setAdditionalNotes] = useState("");
 	const [tables, setTables] = useState<Table[]>();
 	const [customerName, setCustomerName] = useState<string>("");
 	const [customerPhone, setCustomerPhone] = useState<string>("");
 	const [isMenuOpen, setIsMenuOpen] = useState(false);
-	const navigate = useNavigate();
+        const navigate = useNavigate();
+        const restaurantId = parseInt(localStorage.getItem("restaurantId") || "0");
 
 	const [sessionId] = useState<string>(() => {
 		const existingId = localStorage.getItem("sessionId");
@@ -59,10 +61,12 @@ function SelectService() {
 		return newId;
 	});
 
-	useEffect(() => {
-		console.log("sessionId:", sessionId);
-		getAllTables(sessionId).then((tables) => setTables(tables));
-	}, [sessionId]);
+        useEffect(() => {
+                console.log("sessionId:", sessionId);
+                if (restaurantId) {
+                        getAllTables(sessionId, restaurantId.toString()).then((tables) => setTables(tables));
+                }
+        }, [sessionId, restaurantId]);
 
 	const totalPrice = Object.entries(cart).reduce((sum, [itemId, quantity]) => {
 		const item = allMenuItems.find((i) => i.id === parseInt(itemId));
