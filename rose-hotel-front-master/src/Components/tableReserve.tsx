@@ -10,7 +10,7 @@ import { Link, useNavigate, useLocation } from "react-router-dom";
 import { toast } from "react-toastify";
 import reserveImage from "../assets/images/home.png";
 import icon from "../assets/images/logo.png";
-import { toFarsiNumber } from "../Utils/setNumbersToPersian";
+import { toFarsiNumber, toEnglishNumber } from "../Utils/setNumbersToPersian";
 
 interface ITable {
 	name: string;
@@ -99,10 +99,12 @@ function Reserve() {
 			console.log("Original date:", date.toISOString());
 			console.log("formattedDate", formattedDate);
 			// Convert date to Persian (Shamsi) for logging or display
-			const persianDate = moment(date).format("jYYYY/jMM/jDD");
-			const hourString = hour ? hour.format("HH:mm") : "";
+                        const persianDate = moment(date).format("jYYYY/jMM/jDD");
+                        const hourString = hour
+                                ? toEnglishNumber(hour.format("HH:mm"))
+                                : "";
                         const reservationData = {
-                                date: persianDate,
+                                date: formattedDate,
                                 hour: hourString,
                                 duration,
                                 people: guests,
