@@ -6,7 +6,7 @@ import persian_fa from "react-date-object/locales/persian_fa";
 import { FaBars, FaExclamation, FaMinus, FaPlus } from "react-icons/fa";
 import DatePicker, { DateObject } from "react-multi-date-picker";
 import TimePicker from "react-multi-date-picker/plugins/time_picker";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { toast } from "react-toastify";
 import reserveImage from "../assets/images/home.png";
 import icon from "../assets/images/logo.png";
@@ -28,7 +28,12 @@ function Reserve() {
 	const [isMenuOpen, setIsMenuOpen] = useState(false);
 
 	// const times = ["ساعت ۳", "۲ ساعت", "۱ ساعت"];
-	const navigate = useNavigate();
+        const navigate = useNavigate();
+        const location = useLocation();
+        const params = new URLSearchParams(location.search);
+        const restaurantId = parseInt(
+                params.get("restaurant") || localStorage.getItem("restaurantId") || "0"
+        );
 
 	const incrementGuests = () => setGuests((prev) => Math.min(prev + 1, 10));
 	const decrementGuests = () => setGuests((prev) => Math.max(prev - 1, 1));
@@ -46,12 +51,13 @@ function Reserve() {
 	// 	}
 	// };
 
-	const getTables = async (params: {
-		date: string;
-		hour: string;
-		duration: number;
-		people: number;
-	}) => {
+        const getTables = async (params: {
+                date: string;
+                hour: string;
+                duration: number;
+                people: number;
+                restaurantId: number;
+        }) => {
 		try {
 			console.log("params", params);
 
@@ -59,10 +65,10 @@ function Reserve() {
 				`${import.meta.env.VITE_API_BASE_URL}${
 					import.meta.env.VITE_RESERVATIONS_AVAILABLE_ENDPOINT
 				}`,
-				{
-					params,
-				}
-			);
+                                {
+                                        params,
+                                }
+                        );
 			console.log("API Response:", response);
 
 			setTables(response.data);
@@ -95,12 +101,13 @@ function Reserve() {
 			// Convert date to Persian (Shamsi) for logging or display
 			const persianDate = moment(date).format("jYYYY/jMM/jDD");
 			const hourString = hour ? hour.format("HH:mm") : "";
-			const reservationData = {
-				date: persianDate,
-				hour: hourString,
-				duration,
-				people: guests,
-			};
+                        const reservationData = {
+                                date: persianDate,
+                                hour: hourString,
+                                duration,
+                                people: guests,
+                                restaurantId,
+                        };
 
 			let tables = [];
 			try {

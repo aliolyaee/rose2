@@ -7,6 +7,7 @@ import {
   Param,
   Delete,
   ParseIntPipe,
+  Query,
 } from '@nestjs/common';
 import { TablesService } from './tables.service';
 import { CreateTableDto, UpdateTableDto } from './dto/create-table.dto';
@@ -29,8 +30,10 @@ export class TablesController {
   }
 
   @Get()
-  async findAll() {
-    return this.tablesService.findAll();
+  async findAll(@Query('restaurantId') restaurantId?: string) {
+    return this.tablesService.findAll(
+      restaurantId ? +restaurantId : undefined,
+    );
   }
 
   @Get(':id')

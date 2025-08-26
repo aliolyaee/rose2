@@ -4,7 +4,7 @@ import axios from "axios";
 import { useEffect, useState } from "react";
 import * as Icons from "react-icons/fa"; // همه آیکون‌های FontAwesome
 import { FaBars, FaSearch, FaUtensils } from "react-icons/fa";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { default as icon, default as noImage } from "../assets/images/logo.png";
 import headerImage from "../assets/images/omlet.jpeg";
 import { useCart } from "./CartContext";
@@ -34,10 +34,13 @@ function Menu() {
   const [categories, setCategories] = useState<Category[]>();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
-
-	// const homeImage = import.meta.env.VITE_HOME_IMAGE;
+  // const homeImage = import.meta.env.VITE_HOME_IMAGE;
 
   const navigate = useNavigate();
+  const location = useLocation();
+  const params = new URLSearchParams(location.search);
+  const restaurantId =
+    params.get("restaurant") || localStorage.getItem("restaurantId") || "";
 
   const totalPrice = Object.entries(cart).reduce((sum, [itemId, quantity]) => {
     const item = allMenuItems.find((i) => i.id === parseInt(itemId));
@@ -75,7 +78,8 @@ function Menu() {
       const response = await axios.get(
         `${import.meta.env.VITE_API_BASE_URL}${
           import.meta.env.VITE_MENU_CATEGORIES_ENDPOINT
-        }`
+        }`,
+        { params: { restaurantId } }
       );
       console.log("API Response:", response.data);
       setCategories(response.data);
@@ -108,8 +112,10 @@ function Menu() {
   };
 
   useEffect(() => {
-    getCategories();
-  }, []);
+    if (restaurantId) {
+      getCategories();
+    }
+  }, [restaurantId]);
 
   useEffect(() => {
     if (categories && categories.length > 0) {
