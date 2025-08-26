@@ -1,0 +1,95 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: rose
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5433:5433"
+    volumes:
+      - postgres_data_dev:/var/lib/postgresql/data
+    networks:
+      - rose-dev-network
+
+  # Backend API (Development with hot reload)
+  backend-dev:
+    build:
+      context: ./rose-backend-main
+      dockerfile: Dockerfile.dev
+      target: development
+    ports:
+      - "3000:3000"
+      - "9229:9229"  # Debug port
+    environment:
+      - NODE_ENV=development
+      - DATABASE_HOST=postgres
+      - DATABASE_PORT=5433
+      - DATABASE_NAME=rose
+      - DATABASE_USER=postgres
+      - DATABASE_PASSWORD=postgres
+    env_file:
+      - ./rose-backend-main/.env
+    volumes:
+      - ./rose-backend-main:/usr/src/app
+      - /usr/src/app/node_modules
+    restart: unless-stopped
+    depends_on:
+      - postgres
+    networks:
+      - rose-dev-network
+
+  # Admin Panel (Development with hot reload)
+  admin-panel-dev:
+    build:
+      context: ./admin-panel-main
+      dockerfile: Dockerfile.dev
+      target: development
+    ports:
+      - "3002:3000"
+    environment:
+      - NODE_ENV=development
+      - NEXT_PUBLIC_API_URL=http://localhost:3000
+    env_file:
+      - ./admin-panel-main/.env
+    volumes:
+      - ./admin-panel-main:/app
+      - /app/node_modules
+      - /app/.next
+    restart: unless-stopped
+    depends_on:
+      - backend-dev
+    networks:
+      - rose-dev-network
+
+  # Hotel Frontend (Development with hot reload)
+  hotel-frontend-dev:
+    build:
+      context: ./rose-hotel-front-master
+      dockerfile: Dockerfile.dev
+      target: development
+    ports:
+      - "5173:5173"  # Vite dev server port
+    environment:
+      - NODE_ENV=development
+      - VITE_API_URL=http://localhost:3000
+    volumes:
+      - ./rose-hotel-front-master:/app
+      - /app/node_modules
+    restart: unless-stopped
+    depends_on:
+      - backend-dev
+    networks:
+      - rose-dev-network
+
+volumes:
+  postgres_data_dev:
+    driver: local
+
+networks:
+  rose-dev-network:
+    driver: bridge

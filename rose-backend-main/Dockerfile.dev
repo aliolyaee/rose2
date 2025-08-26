@@ -1,0 +1,19 @@
+# Development Dockerfile for Backend (NestJS)
+FROM node:20-alpine AS development
+
+WORKDIR /usr/src/app
+
+# Copy package files
+COPY package*.json ./
+
+# Install all dependencies (including dev)
+RUN npm i --force
+
+# Copy source code
+COPY . .
+
+# Expose ports
+EXPOSE 3000 9229
+
+# Start in development mode with hot reload and debugging
+CMD ["npm", "run", "start:debug"]
