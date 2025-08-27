@@ -1,7 +1,4 @@
-version: '3.8'
-
 services:
-  # PostgreSQL Database
   postgres:
     image: postgres:16-alpine
     restart: unless-stopped
@@ -21,7 +18,6 @@ services:
       timeout: 10s
       retries: 3
 
-  # Backend API (NestJS)
   backend:
     build:
       context: ./rose-backend-main
@@ -29,19 +25,20 @@ services:
     ports:
       - "3005:3000"
     environment:
-      - NODE_ENV=production
-      - DB="rose"
-      - DBHOST="postgres"
-      - DBPORT=5432
-      - DBUSERNAME="postgres"
-      - DBPASSWORD="postgres"
-      - ACCESSTOKENJWT="c69fb1d897b2b67a8ee486af6c502d6fa93f66c0da428e23f45f2c5719b4944f"
-      - REFRESHTOKENJWT="c69fb1d897b2b67a8ee486af6c502d6fa93f66c0da428e23f45f2c5719b4944f"
-      - COOKIE_SECRET="c69fb1d897b2b67a8ee486af6c502d6fa93f66c0da428e23f45f2c5719b4944f"
-      - OTP_TOKEN_SECRET="c69fb1d897b2b67a8ee486af6c502d6fa93f66c0da428e23f45f2c5719b4944f"
-      - PHONE_SECRET_TOKEN="c69fb1d897b2b67a8ee486af6c502d6fa93f66c0da428e23f45f2c5719b4944f"
-      - EMAIL_SECRET_TOKEN="c69fb1d897b2b67a8ee486af6c502d6fa93f66c0da428e23f45f2c5719b4944f"
-      - SEND_SMS_URL="https://api.kavenegar.com/v1/{API_KEY}/verify/lookup.json"
+      NODE_ENV: production
+      PORT: "3000"
+      DB: rose
+      DBHOST: postgres
+      DBPORT: "5432"           # <-- fix
+      DBUSERNAME: postgres
+      DBPASSWORD: postgres
+      ACCESSTOKENJWT: c69fb1d897b2b67a8ee486af6c502d6fa93f66c0da428e23f45f2c5719b4944f
+      REFRESHTOKENJWT: c69fb1d897b2b67a8ee486af6c502d6fa93f66c0da428e23f45f2c5719b4944f
+      COOKIE_SECRET: c69fb1d897b2b67a8ee486af6c502d6fa93f66c0da428e23f45f2c5719b4944f
+      OTP_TOKEN_SECRET: c69fb1d897b2b67a8ee486af6c502d6fa93f66c0da428e23f45f2c5719b4944f
+      PHONE_SECRET_TOKEN: c69fb1d897b2b67a8ee486af6c502d6fa93f66c0da428e23f45f2c5719b4944f
+      EMAIL_SECRET_TOKEN: c69fb1d897b2b67a8ee486af6c502d6fa93f66c0da428e23f45f2c5719b4944f
+      SEND_SMS_URL: https://api.kavenegar.com/v1/{API_KEY}/verify/lookup.json
     env_file:
       - ./rose-backend-main/.env
     restart: unless-stopped
@@ -52,22 +49,14 @@ services:
       rose-network:
         aliases: [rose-backend]
 
-    healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:3000/health || exit 1"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-
-  # Admin Panel (Next.js)
   admin-panel:
     build:
       context: ./admin-panel-main
-      dockerfile: Dockerfile
     ports:
       - "3006:3002"
     environment:
-      - NODE_ENV=production
-      - NEXT_PUBLIC_API_URL=http://backend:3000
+      NODE_ENV: production
+      NEXT_PUBLIC_API_URL: http://api.rose.baniantourism.com   # <-- fix
     env_file:
       - ./admin-panel-main/.env
     restart: unless-stopped
@@ -76,19 +65,16 @@ services:
         condition: service_healthy
     networks:
       rose-network:
-        aliases: [ rose-admin ]
+        aliases: [rose-admin]
 
-
-  # Hotel Frontend (Vite + React)
   hotel-frontend:
     build:
       context: ./rose-hotel-front-master
-      dockerfile: Dockerfile
     ports:
       - "3007:5000"
     environment:
-      - NODE_ENV=production
-      - VITE_API_URL=http://api.rose.baniantourism.com
+      NODE_ENV: production
+      VITE_API_URL: http://api.rose.baniantourism.com
     restart: unless-stopped
     depends_on:
       backend:
@@ -97,11 +83,8 @@ services:
       rose-network:
         aliases: [rose-frontend]
 
-
-
 volumes:
   postgres_data:
-    driver: local
 
 networks:
   rose-network:

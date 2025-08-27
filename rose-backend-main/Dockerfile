@@ -20,6 +20,9 @@ RUN npm run build
 FROM node:20-alpine AS production
 WORKDIR /usr/src/app
 
+# Optional, for `nc` in the entrypoint
+RUN apk add --no-cache netcat-openbsd
+
 # Copy package.json for production dependencies
 COPY package*.json ./
 RUN npm ci --only=production && npm cache clean --force
@@ -27,9 +30,11 @@ RUN npm ci --only=production && npm cache clean --force
 # Copy built application from builder stage
 COPY --from=builder /usr/src/app/dist ./dist
 
-# Add entrypoint to run migrations then start
-COPY docker-entrypoint.sh /usr/local/bin/
-RUN chmod +x /usr/local/bin/docker-entrypoint.sh
+# Copy entrypoint and normalize line endings + make it executable
+COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
+RUN sed -i 's/\r$//' /usr/local/bin/docker-entrypoint.sh && \
+    chmod 755 /usr/local/bin/docker-entrypoint.sh
+
 
 # Create non-root user
 RUN addgroup -g 1001 -S nodejs && adduser -S nestjs -u 1001

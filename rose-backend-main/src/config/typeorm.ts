@@ -15,8 +15,12 @@ let dataSource = new DataSource({
   username: DBUSERNAME,
   password: DBPASSWORD,
   synchronize: false,
-  entities: ["dist/**/**/**/*.entity{.ts,.js}", "dist/**/**/*.entity{.ts,.js}"],
-  migrations: ["src/migrations/*{.ts,.js}"],
+    migrations: [process.env.NODE_ENV === 'production'
+        ? 'dist/migrations/*.js'
+        : 'src/migrations/*.ts'],
+    entities: [process.env.NODE_ENV === 'production'
+        ? 'dist/**/*.entity.js'
+        : 'src/**/*.entity.ts'],
   migrationsTableName: "youtaab_migration_db",
 });
 export default dataSource;

@@ -1,12 +1,13 @@
 #!/bin/sh
 set -e
 
-# Wait for Postgres (simple wait; replace with proper wait-for-it if needed)
 echo "Waiting for database..."
-sleep 5
+until nc -z "${DBHOST:-postgres}" "${DBPORT:-5432}"; do
+  sleep 1
+done
 
 echo "Running migrations..."
-npm run migration:run || true
+npm run migration:run:prod
 
 echo "Starting app..."
-exec "$@"
+exec node dist/main.js
