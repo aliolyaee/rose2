@@ -1,0 +1,89 @@
+apps:
+  http:
+    servers:
+      http:
+        listen: [":80"]
+        routes:
+          # ======== YOUTAAB ========
+          - match: [{ host: ["menu.baniantourism.com"] }]
+            handle:
+              - handler: subroute
+                routes:
+                  # /api/* -> youtaab-backend:3000
+                  - match: [{ path: ["/api/*"] }]
+                    handle:
+                      - handler: rewrite
+                        strip_path_prefix: "/api"
+                      - handler: reverse_proxy
+                        upstreams: [{ dial: "youtaab-backend:3000" }]
+                    terminal: true
+
+                  # /admin/* -> youtaab-admin:3002
+                  - match: [{ path: ["/admin/*"] }]
+                    handle:
+                      - handler: rewrite
+                        strip_path_prefix: "/admin"
+                      - handler: reverse_proxy
+                        upstreams: [{ dial: "youtaab-admin:3002" }]
+                    terminal: true
+
+                  # everything else -> youtaab-frontend:5000
+                  - handle:
+                      - handler: reverse_proxy
+                        upstreams: [{ dial: "youtaab-frontend:5000" }]
+                    terminal: true
+            terminal: true
+
+          - match: [{ host: ["api.menu.baniantourism.com"] }]
+            handle:
+              - handler: reverse_proxy
+                upstreams: [{ dial: "youtaab-backend:3000" }]
+            terminal: true
+
+          - match: [{ host: ["admin.menu.baniantourism.com"] }]
+            handle:
+              - handler: reverse_proxy
+                upstreams: [{ dial: "youtaab-admin:3002" }]
+            terminal: true
+
+          # ======== ROSE ========
+          - match: [{ host: ["rose.baniantourism.com"] }]
+            handle:
+              - handler: subroute
+                routes:
+                  # /api/* -> rose-backend:3000
+                  - match: [{ path: ["/api/*"] }]
+                    handle:
+                      - handler: rewrite
+                        strip_path_prefix: "/api"
+                      - handler: reverse_proxy
+                        upstreams: [{ dial: "rose-backend:3000" }]
+                    terminal: true
+
+                  # /admin/* -> rose-admin:3002
+                  - match: [{ path: ["/admin/*"] }]
+                    handle:
+                      - handler: rewrite
+                        strip_path_prefix: "/admin"
+                      - handler: reverse_proxy
+                        upstreams: [{ dial: "rose-admin:3002" }]
+                    terminal: true
+
+                  # everything else -> rose-frontend:5000
+                  - handle:
+                      - handler: reverse_proxy
+                        upstreams: [{ dial: "rose-frontend:5000" }]
+                    terminal: true
+            terminal: true
+
+          - match: [{ host: ["api.rose.baniantourism.com"] }]
+            handle:
+              - handler: reverse_proxy
+                upstreams: [{ dial: "rose-backend:3000" }]
+            terminal: true
+
+          - match: [{ host: ["admin.rose.baniantourism.com"] }]
+            handle:
+              - handler: reverse_proxy
+                upstreams: [{ dial: "rose-admin:3002" }]
+            terminal: true

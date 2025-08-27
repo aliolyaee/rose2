@@ -1,0 +1,26 @@
+services:
+  caddy:
+    build: ./caddy
+    container_name: caddy
+    restart: unless-stopped
+    command: ["run", "--config", "/etc/caddy/caddy.yaml", "--adapter", "yaml"]
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./caddy.yaml:/etc/caddy/caddy.yaml:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    networks:
+      - youtaab-network
+      - rose-network
+
+volumes:
+  caddy_data:
+  caddy_config:
+
+networks:
+  youtaab-network:
+    external: true
+  rose-network:
+    external: true

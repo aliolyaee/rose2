@@ -10,7 +10,7 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
     ports:
-      - "5433:5433"
+      - "5433:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     networks:
@@ -27,14 +27,21 @@ services:
       context: ./rose-backend-main
       dockerfile: Dockerfile
     ports:
-      - "3000:3000"
+      - "3005:3000"
     environment:
       - NODE_ENV=production
-      - DATABASE_HOST=postgres
-      - DATABASE_PORT=5433
-      - DATABASE_NAME=rose
-      - DATABASE_USER=postgres
-      - DATABASE_PASSWORD=postgres
+      - DB="rose"
+      - DBHOST="postgres"
+      - DBPORT=5432
+      - DBUSERNAME="postgres"
+      - DBPASSWORD="postgres"
+      - ACCESSTOKENJWT="c69fb1d897b2b67a8ee486af6c502d6fa93f66c0da428e23f45f2c5719b4944f"
+      - REFRESHTOKENJWT="c69fb1d897b2b67a8ee486af6c502d6fa93f66c0da428e23f45f2c5719b4944f"
+      - COOKIE_SECRET="c69fb1d897b2b67a8ee486af6c502d6fa93f66c0da428e23f45f2c5719b4944f"
+      - OTP_TOKEN_SECRET="c69fb1d897b2b67a8ee486af6c502d6fa93f66c0da428e23f45f2c5719b4944f"
+      - PHONE_SECRET_TOKEN="c69fb1d897b2b67a8ee486af6c502d6fa93f66c0da428e23f45f2c5719b4944f"
+      - EMAIL_SECRET_TOKEN="c69fb1d897b2b67a8ee486af6c502d6fa93f66c0da428e23f45f2c5719b4944f"
+      - SEND_SMS_URL="https://api.kavenegar.com/v1/{API_KEY}/verify/lookup.json"
     env_file:
       - ./rose-backend-main/.env
     restart: unless-stopped
@@ -42,7 +49,9 @@ services:
       postgres:
         condition: service_healthy
     networks:
-      - rose-network
+      rose-network:
+        aliases: [rose-backend]
+
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:3000/health || exit 1"]
       interval: 30s
@@ -55,7 +64,7 @@ services:
       context: ./admin-panel-main
       dockerfile: Dockerfile
     ports:
-      - "3002:3000"
+      - "3006:3002"
     environment:
       - NODE_ENV=production
       - NEXT_PUBLIC_API_URL=http://backend:3000
@@ -66,7 +75,9 @@ services:
       backend:
         condition: service_healthy
     networks:
-      - rose-network
+      rose-network:
+        aliases: [ rose-admin ]
+
 
   # Hotel Frontend (Vite + React)
   hotel-frontend:
@@ -74,33 +85,19 @@ services:
       context: ./rose-hotel-front-master
       dockerfile: Dockerfile
     ports:
-      - "5173:5173"
+      - "3007:5000"
     environment:
       - NODE_ENV=production
-      - VITE_API_URL=http://backend:3000
+      - VITE_API_URL=http://api.rose.baniantourism.com
     restart: unless-stopped
     depends_on:
       backend:
         condition: service_healthy
     networks:
-      - rose-network
+      rose-network:
+        aliases: [rose-frontend]
 
-  # Nginx Reverse Proxy (Optional)
-  nginx:
-    image: nginx:alpine
-    ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - ./nginx.conf:/etc/nginx/nginx.conf:ro
-      - ./ssl:/etc/nginx/ssl:ro
-    restart: unless-stopped
-    depends_on:
-      - backend
-      - admin-panel
-      - hotel-frontend
-    networks:
-      - rose-network
+
 
 volumes:
   postgres_data:

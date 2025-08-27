@@ -15,7 +15,7 @@ export function SwaggerConfigInit(app: INestApplication): void {
   SwaggerModule.setup('api', app, swaggerDocument);
 
   // Write swagger.json to project root
-  writeFileSync('./swagger.json', JSON.stringify(swaggerDocument, null, 2));
+ // writeFileSync('./swagger.json', JSON.stringify(swaggerDocument, null, 2));
 }
 
 function swaggerAuthConfig(): SecuritySchemeObject {

@@ -16,6 +16,6 @@ COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/package.json ./
 
 # Serve the build with PM2
-CMD ["pm2-runtime", "serve", "dist", "5000", "--spa"]
+CMD ["pm2-runtime", "start", "serve", "--", "-s", "dist", "-l", "tcp://0.0.0.0:5000"]
 
 EXPOSE 5000
