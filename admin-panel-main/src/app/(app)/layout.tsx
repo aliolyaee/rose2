@@ -1,3 +1,4 @@
+// src/app/(app)/layout.tsx
 "use client";
 
 import { useEffect, useState, ReactNode } from 'react';
@@ -6,8 +7,9 @@ import { getCurrentUser } from '@/lib/auth';
 import AppSidebar from '@/components/layout/app-sidebar';
 import AppTopbar from '@/components/layout/app-topbar';
 import { SidebarProvider } from '@/components/ui/sidebar';
+import { RestaurantProvider } from '@/contexts/restaurant-context';
 import type { User } from '@/types';
-import { Skeleton } from '@/components/ui/skeleton'; // For loading state
+import { Skeleton } from '@/components/ui/skeleton';
 
 // Skeleton loader for the entire app layout
 const AppLayoutSkeleton = () => (
@@ -20,7 +22,7 @@ const AppLayoutSkeleton = () => (
       </div>
       <Skeleton className="h-px w-full" />
       <div className="space-y-2 mt-4">
-        {[...Array(5)].map((_, i) => (
+        {[...Array(6)].map((_, i) => (
           <div key={i} className="flex items-center gap-2">
             <Skeleton className="h-6 w-6 rounded" />
             <Skeleton className="h-6 w-40" />
@@ -43,13 +45,13 @@ const AppLayoutSkeleton = () => (
     <div className="flex flex-1 flex-col">
       {/* Topbar Skeleton */}
       <div className="flex h-16 items-center justify-between border-b px-6">
-        <Skeleton className="h-6 w-48 md:hidden" /> {/* Mobile trigger */}
+        <Skeleton className="h-6 w-48 md:hidden" />
         <div className="hidden md:block">
-           <Skeleton className="h-6 w-48" /> {/* Page Title area */}
+          <Skeleton className="h-6 w-48" />
         </div>
         <div className="flex items-center gap-4">
-           <Skeleton className="h-6 w-24 hidden md:block" />
-           <Skeleton className="h-10 w-10 rounded-full" />
+          <Skeleton className="h-6 w-24 hidden md:block" />
+          <Skeleton className="h-10 w-10 rounded-full" />
         </div>
       </div>
       {/* Page Content Skeleton */}
@@ -61,7 +63,6 @@ const AppLayoutSkeleton = () => (
     </div>
   </div>
 );
-
 
 export default function AppLayout({ children }: { children: ReactNode }) {
   const router = useRouter();
@@ -76,7 +77,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
       if (pathname !== '/login') {
         router.replace('/login');
       } else {
-         setIsLoading(false); // On login page, no need to load user
+        setIsLoading(false); // On login page, no need to load user
       }
     } else {
       setUser(currentUser);
@@ -90,34 +91,34 @@ export default function AppLayout({ children }: { children: ReactNode }) {
 
   // If still no user and not on login page, means redirect is happening or something is wrong
   if (!user && pathname !== '/login') {
-     return <AppLayoutSkeleton />; // Show skeleton while redirecting
-  }
-  
-  // If on login page, don't render app layout
-  if (pathname === '/login' && !user) {
-      return <>{children}</>; // Render login page content directly
+    return <AppLayoutSkeleton />; // Show skeleton while redirecting
   }
 
+  // If on login page, don't render app layout
+  if (pathname === '/login' && !user) {
+    return <>{children}</>; // Render login page content directly
+  }
 
   // This case should ideally not be hit if redirection logic is correct
   // but as a fallback, if user is null and not on login, show skeleton or redirect.
   if (!user) {
-     router.replace('/login');
-     return <AppLayoutSkeleton />;
+    router.replace('/login');
+    return <AppLayoutSkeleton />;
   }
 
-
   return (
-    <SidebarProvider defaultOpen={true}>
-      <div className="flex min-h-screen bg-background text-foreground">
-        <AppSidebar user={user} />
-        <div className="flex flex-1 flex-col overflow-hidden">
-          <AppTopbar user={user} />
-          <main className="flex-1 p-4 md:p-6 lg:p-8 overflow-auto">
-            {children}
-          </main>
+    <RestaurantProvider>
+      <SidebarProvider defaultOpen={true}>
+        <div className="flex min-h-screen bg-background text-foreground">
+          <AppSidebar user={user} />
+          <div className="flex flex-1 flex-col overflow-hidden">
+            <AppTopbar user={user} />
+            <main className="flex-1 p-4 md:p-6 lg:p-8 overflow-auto">
+              {children}
+            </main>
+          </div>
         </div>
-      </div>
-    </SidebarProvider>
+      </SidebarProvider>
+    </RestaurantProvider>
   );
 }

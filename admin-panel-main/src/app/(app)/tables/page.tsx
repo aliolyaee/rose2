@@ -1,4 +1,4 @@
-
+// src/app/(app)/tables/page.tsx
 "use client";
 
 import * as React from "react";
@@ -11,13 +11,15 @@ import { TableManagementTable } from "./components/table-management-table";
 import { TableFormDialog } from "./components/table-form-dialog";
 import { DataTablePagination } from "@/components/shared/data-table-pagination";
 import { useToast } from "@/hooks/use-toast";
-import { debounce, generateMockId } from "@/lib/utils"; // generateMockId only for FE-only IDs if needed before save
+import { debounce } from "@/lib/utils";
 import axiosInstance from "@/lib/axiosInstance";
+import { useRestaurant } from "@/contexts/restaurant-context";
 
 const ITEMS_PER_PAGE = 5;
 
 export default function TablesPage() {
   const { toast } = useToast();
+  const { currentRestaurant } = useRestaurant();
   const [allTables, setAllTables] = React.useState<TableType[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
   const [isFormOpen, setIsFormOpen] = React.useState(false);
@@ -27,22 +29,30 @@ export default function TablesPage() {
   const [currentPage, setCurrentPage] = React.useState(1);
 
   const fetchTables = React.useCallback(async () => {
+    if (!currentRestaurant) {
+      setAllTables([]);
+      setIsLoading(false);
+      return;
+    }
+
     setIsLoading(true);
     try {
-      const response = await axiosInstance.get("/tables");
+      const response = await axiosInstance.get("/tables", {
+        params: { restaurantId: currentRestaurant.id }
+      });
       setAllTables(response.data || []);
     } catch (error) {
       console.error("Failed to fetch tables:", error);
       toast({
-        title: "Error Fetching Tables",
-        description: "Could not load table data from the server.",
+        title: "خطا در بارگیری میزها",
+        description: "نمی‌توان اطلاعات میزها را از سرور دریافت کرد.",
         variant: "destructive",
       });
       setAllTables([]);
     } finally {
       setIsLoading(false);
     }
-  }, [toast]);
+  }, [toast, currentRestaurant]);
 
   React.useEffect(() => {
     fetchTables();
@@ -74,6 +84,14 @@ export default function TablesPage() {
   const totalPages = Math.ceil(filteredTables.length / ITEMS_PER_PAGE);
 
   const handleAddTable = () => {
+    if (!currentRestaurant) {
+      toast({
+        title: "رستوران انتخاب نشده",
+        description: "لطفاً ابتدا یک رستوران انتخاب کنید.",
+        variant: "destructive",
+      });
+      return;
+    }
     setEditingTable(null);
     setIsFormOpen(true);
   };
@@ -87,29 +105,37 @@ export default function TablesPage() {
   };
 
   const handleSubmitForm = async (formData: Omit<TableType, 'id' | 'createdAt' | 'status'> | (TableType & { id: string })) => {
-    // API for tables expects: { name, description, capacity, photo }
-    // 'status' is not part of the API POST/PATCH body for tables.
+    if (!currentRestaurant) {
+      toast({
+        title: "خطا",
+        description: "رستوران فعلی یافت نشد.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     const payload = {
       name: formData.name,
       description: formData.description,
       capacity: formData.capacity,
       photo: formData.photo,
+      restaurantId: currentRestaurant.id,
     };
 
     try {
-      if ('id' in formData && formData.id) { // Editing
+      if ('id' in formData && formData.id) {
         await axiosInstance.patch(`/tables/${formData.id}`, payload);
-        toast({ title: "Table Updated", description: `Table ${payload.name} has been updated.` });
-      } else { // Adding
+        toast({ title: "میز بروزرسانی شد", description: `میز ${payload.name} بروزرسانی شد.` });
+      } else {
         await axiosInstance.post("/tables", payload);
-        toast({ title: "Table Added", description: `Table ${payload.name} has been added.` });
+        toast({ title: "میز اضافه شد", description: `میز ${payload.name} اضافه شد.` });
       }
       setIsFormOpen(false);
       setEditingTable(null);
-      fetchTables(); // Refresh table list
+      fetchTables();
     } catch (error: any) {
-      const apiError = error.response?.data?.message || "An error occurred while saving the table.";
-      toast({ title: "Error", description: apiError, variant: "destructive" });
+      const apiError = error.response?.data?.message || "خطایی در ذخیره میز رخ داد.";
+      toast({ title: "خطا", description: apiError, variant: "destructive" });
       console.error("Submit table error:", error.response?.data || error.message);
     }
   };
@@ -117,20 +143,33 @@ export default function TablesPage() {
   const handleDeleteTable = async (id: string) => {
     try {
       await axiosInstance.delete(`/tables/${id}`);
-      toast({ title: "Table Deleted", description: "The table has been successfully deleted." });
-      fetchTables(); // Refresh table list
-    } catch (error) {
-      toast({ title: "Error Deleting Table", description: "Could not delete the table.", variant: "destructive" });
+      toast({ title: "میز حذف شد", description: "میز با موفقیت حذف شد." });
+      fetchTables();
+    } catch (error: any) {
+      const apiError = error.response?.data?.message || "نمی‌توان میز را حذف کرد.";
+      toast({ title: "خطا در حذف میز", description: apiError, variant: "destructive" });
     }
   };
 
+  if (!currentRestaurant) {
+    return (
+      <div className="space-y-6">
+        <PageHeader title="مدیریت میزها" description="مدیریت تمامی میزهای رستوران." />
+        <div className="text-center py-10">
+          <Archive className="mx-auto h-12 w-12 text-muted-foreground" />
+          <h3 className="mt-2 text-sm font-medium text-foreground">رستورانی انتخاب نشده</h3>
+          <p className="mt-1 text-sm text-muted-foreground">برای مشاهده میزها، لطفاً ابتدا یک رستوران انتخاب کنید.</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Table Management" description="Manage all restaurant tables.">
+      <PageHeader title="مدیریت میزها" description={`مدیریت میزهای رستوران ${currentRestaurant.name}`}>
         <Button onClick={handleAddTable}>
           <PlusCircle className="mr-2 h-4 w-4" />
-          Add Table
+          افزودن میز
         </Button>
       </PageHeader>
 
@@ -138,7 +177,7 @@ export default function TablesPage() {
         <div className="relative w-full max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Search tables (name, description)..."
+            placeholder="جستجو میزها (نام، توضیحات)..."
             className="pl-10"
             onChange={handleSearchChange}
           />
@@ -162,17 +201,17 @@ export default function TablesPage() {
         />
       )}
       {allTables.length > 0 && filteredTables.length === 0 && !isLoading && (
-        <p className="text-center text-muted-foreground py-4">No tables found matching your search criteria.</p>
+        <p className="text-center text-muted-foreground py-4">هیچ میزی با معیارهای جستجو شما یافت نشد.</p>
       )}
       {allTables.length === 0 && !isLoading && (
         <div className="text-center py-10">
           <Archive className="mx-auto h-12 w-12 text-muted-foreground" />
-          <h3 className="mt-2 text-sm font-medium text-foreground">No tables yet</h3>
-          <p className="mt-1 text-sm text-muted-foreground">Get started by adding a new table.</p>
+          <h3 className="mt-2 text-sm font-medium text-foreground">هنوز میزی وجود ندارد</h3>
+          <p className="mt-1 text-sm text-muted-foreground">با افزودن میز جدید شروع کنید.</p>
           <div className="mt-6">
             <Button onClick={handleAddTable}>
               <PlusCircle className="mr-2 h-4 w-4" />
-              Add Table
+              افزودن میز
             </Button>
           </div>
         </div>

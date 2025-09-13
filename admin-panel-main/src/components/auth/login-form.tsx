@@ -22,7 +22,7 @@ import { login } from "@/lib/auth";
 import { LogIn } from "lucide-react";
 
 const formSchema = z.object({
-  email: z.string().email({ message: "آدرس ایمیل نامعتبر است." }),
+  email: z.string().min(1, { message: "آدرس ایمیل نامعتبر است." }),
   password: z.string().min(1, { message: "رمز عبور الزامی است." }),
 });
 
@@ -79,7 +79,7 @@ export function LoginForm() {
                 <FormItem>
                   <FormLabel>ایمیل (به عنوان نام کاربری)</FormLabel>
                   <FormControl>
-                    <Input dir="ltr" type="email" placeholder="admin@example.com" {...field} />
+                    <Input dir="ltr" type="text" placeholder="admin@example.com" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>

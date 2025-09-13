@@ -1,4 +1,4 @@
-
+// src/app/(app)/reservations/page.tsx
 "use client";
 
 import * as React from "react";
@@ -23,11 +23,13 @@ import { Calendar } from "@/components/ui/calendar";
 import { cn, debounce, formatDate as formatDateUtil } from "@/lib/utils";
 import axiosInstance from "@/lib/axiosInstance";
 import { format, parseISO } from 'date-fns';
+import { useRestaurant } from "@/contexts/restaurant-context";
 
 const ITEMS_PER_PAGE = 5;
 
 export default function ReservationsPage() {
   const { toast } = useToast();
+  const { currentRestaurant } = useRestaurant();
   const [allReservations, setAllReservations] = React.useState<ReservationType[]>([]);
   const [allTables, setAllTables] = React.useState<Pick<TableType, 'id' | 'name' | 'capacity'>[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
@@ -40,46 +42,48 @@ export default function ReservationsPage() {
   const [currentPage, setCurrentPage] = React.useState(1);
 
   const fetchReservations = React.useCallback(async () => {
+    if (!currentRestaurant) {
+      setAllReservations([]);
+      setIsLoading(false);
+      return;
+    }
+
     setIsLoading(true);
     try {
-      // API params: search, createdBefore, createdAfter
-      // Current filters: searchTerm (maps to search), filterDate (maps to createdAfter/Before), filterStatus (client-side)
-      const params: any = {};
+      const params: any = { restaurantId: currentRestaurant.id };
       if (searchTerm) params.search = searchTerm;
-      if (filterDate) {
-        // Assuming filterDate means we want reservations *on* that date
-        // The API uses createdBefore/createdAfter, which implies creation timestamp.
-        // If API means *reservation date*, then this needs to be adjusted.
-        // For now, I'll assume filtering on reservation date via client-side, as API spec is for `created` timestamps.
-        // params.createdAfter = format(filterDate, "yyyy-MM-dd'T'00:00:00");
-        // params.createdBefore = format(filterDate, "yyyy-MM-dd'T'23:59:59");
-      }
 
       const response = await axiosInstance.get("/reservations", { params });
       const reservationsWithDateTime = response.data.map((res: ReservationType) => ({
         ...res,
-        // Ensure dateTime is a Date object for the form, combining API's date and hour
         dateTime: res.date && res.hour ? parseISO(`${res.date}T${res.hour}:00`) : new Date(),
       }));
       setAllReservations(reservationsWithDateTime || []);
     } catch (error) {
       console.error("Failed to fetch reservations:", error);
-      toast({ title: "Error Fetching Reservations", description: "Could not load reservation data.", variant: "destructive" });
+      toast({ title: "خطا در بارگیری رزروها", description: "نمی‌توان اطلاعات رزرو را دریافت کرد.", variant: "destructive" });
       setAllReservations([]);
     } finally {
       setIsLoading(false);
     }
-  }, [toast, searchTerm]); // Removed filterDate from deps for now
+  }, [toast, searchTerm, currentRestaurant]);
 
   const fetchTables = React.useCallback(async () => {
+    if (!currentRestaurant) {
+      setAllTables([]);
+      return;
+    }
+
     try {
-      const response = await axiosInstance.get("/tables");
+      const response = await axiosInstance.get("/tables", {
+        params: { restaurantId: currentRestaurant.id }
+      });
       setAllTables(response.data.map((t: TableType) => ({ id: t.id, name: t.name, capacity: t.capacity })) || []);
     } catch (error) {
       console.error("Failed to fetch tables:", error);
-      toast({ title: "Error Fetching Tables", description: "Could not load tables for the form.", variant: "destructive" });
+      toast({ title: "خطا در بارگیری میزها", description: "نمی‌توان میزها را برای فرم دریافت کرد.", variant: "destructive" });
     }
-  }, [toast]);
+  }, [toast, currentRestaurant]);
 
   React.useEffect(() => {
     fetchReservations();
@@ -88,12 +92,9 @@ export default function ReservationsPage() {
 
   const debouncedSearch = React.useCallback(debounce((term: string) => {
     setSearchTerm(term);
-    setCurrentPage(1); // Reset page on new search
-    // fetchReservations will be called due to searchTerm dependency change
+    setCurrentPage(1);
   }, 300), []);
 
-
-  // Client-side filtering for status and exact date match, as API spec for date is on creation time
   const filteredReservations = React.useMemo(() => {
     return allReservations.filter(res => {
       const statusMatch = filterStatus === "all" || res.status === filterStatus;
@@ -102,7 +103,7 @@ export default function ReservationsPage() {
       if (filterDate && res.dateTime) {
         const reservationDate = res.dateTime instanceof Date ? res.dateTime : new Date(res.dateTime);
         dateMatch = reservationDate.toDateString() === filterDate.toDateString();
-      } else if (filterDate && !res.dateTime) { // if filterDate is set but reservation has no dateTime
+      } else if (filterDate && !res.dateTime) {
         dateMatch = false;
       }
 
@@ -118,6 +119,14 @@ export default function ReservationsPage() {
   const totalPages = Math.ceil(filteredReservations.length / ITEMS_PER_PAGE);
 
   const handleAddReservation = () => {
+    if (!currentRestaurant) {
+      toast({ title: "رستوران انتخاب نشده", description: "لطفاً ابتدا یک رستوران انتخاب کنید.", variant: "destructive" });
+      return;
+    }
+    if (allTables.length === 0) {
+      toast({ title: "میزی وجود ندارد", description: "لطفاً ابتدا میز اضافه کنید.", variant: "destructive" });
+      return;
+    }
     setEditingReservation(null);
     setIsFormOpen(true);
   };
@@ -131,27 +140,35 @@ export default function ReservationsPage() {
   };
 
   const handleSubmitForm = async (formData: any) => {
-    // formData from dialog already has: tableId, date, hour, duration, people, phone, description
-    // if editing, it also includes 'id'
+    if (!currentRestaurant) {
+      toast({ title: "خطا", description: "رستوران فعلی یافت نشد.", variant: "destructive" });
+      return;
+    }
+
+    const payloadWithRestaurant = {
+      ...formData,
+      restaurantId: currentRestaurant.id,
+    };
+
     try {
-      if (formData.id) { // Editing existing reservation (PATCH with JSON)
-        const { id, ...payload } = formData; // API expects { tableId, date, hour, duration, people, phone, description }
+      if (formData.id) {
+        const { id, ...payload } = payloadWithRestaurant;
         await axiosInstance.patch(`/reservations/${id}`, payload);
-        toast({ title: "Reservation Updated", description: `Reservation for ${formData.phone} has been updated.` });
-      } else { // Adding new reservation (POST with x-www-form-urlencoded)
+        toast({ title: "رزرو بروزرسانی شد", description: `رزرو برای ${formData.phone} بروزرسانی شد.` });
+      } else {
         const params = new URLSearchParams();
-        Object.keys(formData).forEach(key => params.append(key, formData[key]));
+        Object.keys(payloadWithRestaurant).forEach(key => params.append(key, payloadWithRestaurant[key]));
         await axiosInstance.post("/reservations/create", params, {
           headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
         });
-        toast({ title: "Reservation Added", description: `Reservation for ${formData.phone} has been added.` });
+        toast({ title: "رزرو اضافه شد", description: `رزرو برای ${formData.phone} اضافه شد.` });
       }
       setIsFormOpen(false);
       setEditingReservation(null);
-      fetchReservations(); // Refresh list
+      fetchReservations();
     } catch (error: any) {
-      const apiError = error.response?.data?.message || "An error occurred while saving the reservation.";
-      toast({ title: "Error", description: apiError, variant: "destructive" });
+      const apiError = error.response?.data?.message || "خطایی در ذخیره رزرو رخ داد.";
+      toast({ title: "خطا", description: apiError, variant: "destructive" });
       console.error("Submit reservation error:", error.response?.data || error.message);
     }
   };
@@ -159,20 +176,33 @@ export default function ReservationsPage() {
   const handleDeleteReservation = async (id: string) => {
     try {
       await axiosInstance.delete(`/reservations/${id}`);
-      toast({ title: "Reservation Deleted", description: "The reservation has been successfully deleted." });
-      fetchReservations(); // Refresh list
+      toast({ title: "رزرو حذف شد", description: "رزرو با موفقیت حذف شد." });
+      fetchReservations();
     } catch (error: any) {
-      const apiError = error.response?.data?.message || "Could not delete the reservation.";
-      toast({ title: "Error Deleting Reservation", description: apiError, variant: "destructive" });
+      const apiError = error.response?.data?.message || "نمی‌توان رزرو را حذف کرد.";
+      toast({ title: "خطا در حذف رزرو", description: apiError, variant: "destructive" });
     }
+  }
+
+  if (!currentRestaurant) {
+    return (
+      <div className="space-y-6">
+        <PageHeader title="مدیریت رزروها" description="مدیریت تمامی رزروهای مشتریان." />
+        <div className="text-center py-10">
+          <CalendarCheck className="mx-auto h-12 w-12 text-muted-foreground" />
+          <h3 className="mt-2 text-sm font-medium text-foreground">رستورانی انتخاب نشده</h3>
+          <p className="mt-1 text-sm text-muted-foreground">برای مشاهده رزروها، لطفاً ابتدا یک رستوران انتخاب کنید.</p>
+        </div>
+      </div>
+    );
   }
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Reservation Management" description="Manage all customer reservations.">
+      <PageHeader title="مدیریت رزروها" description={`مدیریت رزروهای رستوران ${currentRestaurant.name}`}>
         <Button onClick={handleAddReservation}>
           <PlusCircle className="mr-2 h-4 w-4" />
-          Add Reservation
+          افزودن رزرو
         </Button>
       </PageHeader>
 
@@ -180,7 +210,7 @@ export default function ReservationsPage() {
         <div className="relative w-full md:max-w-xs">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Search by phone, description..."
+            placeholder="جستجو بر اساس تلفن، توضیحات..."
             className="pl-10"
             onChange={(e) => debouncedSearch(e.target.value)}
           />
@@ -188,17 +218,16 @@ export default function ReservationsPage() {
         <div className="flex items-center gap-2 flex-wrap">
           <Select value={filterStatus} onValueChange={(value) => { setFilterStatus(value); setCurrentPage(1); }}>
             <SelectTrigger className="w-full md:w-[180px]">
-
               <SelectValue>
-                <span>Filter by status</span>
+                <span>فیلتر بر اساس وضعیت</span>
               </SelectValue>
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All Statuses</SelectItem>
-              <SelectItem value="confirmed">Confirmed</SelectItem>
-              <SelectItem value="pending">Pending</SelectItem>
-              <SelectItem value="cancelled">Cancelled</SelectItem>
-              <SelectItem value="completed">Completed</SelectItem>
+              <SelectItem value="all">همه وضعیت‌ها</SelectItem>
+              <SelectItem value="confirmed">تایید شده</SelectItem>
+              <SelectItem value="pending">در انتظار</SelectItem>
+              <SelectItem value="cancelled">لغو شده</SelectItem>
+              <SelectItem value="completed">تکمیل شده</SelectItem>
             </SelectContent>
           </Select>
           <Popover>
@@ -211,7 +240,7 @@ export default function ReservationsPage() {
                 )}
               >
                 <CalendarCheck className="mr-2 h-4 w-4" />
-                {filterDate ? formatDateUtil(filterDate.toISOString(), 'PPP') : <span>Filter by date</span>}
+                {filterDate ? formatDateUtil(filterDate.toISOString(), 'PPP') : <span>فیلتر بر اساس تاریخ</span>}
               </Button>
             </PopoverTrigger>
             <PopoverContent className="w-auto p-0" align="start">
@@ -224,7 +253,7 @@ export default function ReservationsPage() {
             </PopoverContent>
           </Popover>
           {(filterStatus !== 'all' || filterDate) && (
-            <Button variant="ghost" onClick={() => { setFilterStatus('all'); setFilterDate(undefined); setCurrentPage(1); }}>Clear Filters</Button>
+            <Button variant="ghost" onClick={() => { setFilterStatus('all'); setFilterDate(undefined); setCurrentPage(1); }}>پاک کردن فیلترها</Button>
           )}
         </div>
       </div>
@@ -246,17 +275,17 @@ export default function ReservationsPage() {
         />
       )}
       {allReservations.length > 0 && filteredReservations.length === 0 && !isLoading && (
-        <p className="text-center text-muted-foreground py-4">No reservations found matching your criteria.</p>
+        <p className="text-center text-muted-foreground py-4">هیچ رزرویی با معیارهای شما یافت نشد.</p>
       )}
       {allReservations.length === 0 && !isLoading && (
         <div className="text-center py-10">
           <CalendarCheck className="mx-auto h-12 w-12 text-muted-foreground" />
-          <h3 className="mt-2 text-sm font-medium text-foreground">No reservations yet</h3>
-          <p className="mt-1 text-sm text-muted-foreground">Get started by adding a new reservation.</p>
+          <h3 className="mt-2 text-sm font-medium text-foreground">هنوز رزرویی وجود ندارد</h3>
+          <p className="mt-1 text-sm text-muted-foreground">با افزودن رزرو جدید شروع کنید.</p>
           <div className="mt-6">
             <Button onClick={handleAddReservation}>
               <PlusCircle className="mr-2 h-4 w-4" />
-              Add Reservation
+              افزودن رزرو
             </Button>
           </div>
         </div>

@@ -1,4 +1,4 @@
-
+// src/app/(app)/menu/page.tsx
 "use client";
 
 import * as React from "react";
@@ -15,11 +15,13 @@ import { useToast } from "@/hooks/use-toast";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { debounce } from "@/lib/utils";
 import axiosInstance from "@/lib/axiosInstance";
+import { useRestaurant } from "@/contexts/restaurant-context";
 
 const ITEMS_PER_PAGE = 5;
 
 export default function MenuPage() {
   const { toast } = useToast();
+  const { currentRestaurant } = useRestaurant();
 
   // Menu Items State
   const [menuItems, setMenuItems] = React.useState<MenuItemType[]>([]);
@@ -35,26 +37,39 @@ export default function MenuPage() {
 
   // Fetch Categories
   const fetchCategories = React.useCallback(async () => {
+    if (!currentRestaurant) {
+      setCategories([]);
+      setIsLoadingCategories(false);
+      return;
+    }
+
     setIsLoadingCategories(true);
     try {
-      const response = await axiosInstance.get("/menu/categories");
+      const response = await axiosInstance.get("/menu/categories", {
+        params: { restaurantId: currentRestaurant.id }
+      });
       setCategories(response.data || []);
     } catch (error) {
       console.error("Failed to fetch categories:", error);
-      toast({ title: "Error Fetching Categories", description: "Could not load category data.", variant: "destructive" });
+      toast({ title: "خطا در بارگیری دسته‌بندی‌ها", description: "نمی‌توان اطلاعات دسته‌بندی‌ها را دریافت کرد.", variant: "destructive" });
       setCategories([]);
     } finally {
       setIsLoadingCategories(false);
     }
-  }, [toast]);
+  }, [toast, currentRestaurant]);
 
   // Fetch Menu Items
   const fetchMenuItems = React.useCallback(async () => {
+    if (!currentRestaurant) {
+      setMenuItems([]);
+      setIsLoadingItems(false);
+      return;
+    }
+
     setIsLoadingItems(true);
     try {
-      const params: any = {};
+      const params: any = { restaurantId: currentRestaurant.id };
       if (searchTermItems) params.search = searchTermItems;
-      // Add category filter if needed: params.category = selectedCategoryId;
       const response = await axiosInstance.get("/menu/items", { params });
       const itemsWithCategoryNames = (response.data || []).map((item: MenuItemType) => ({
         ...item,
@@ -63,19 +78,19 @@ export default function MenuPage() {
       setMenuItems(itemsWithCategoryNames);
     } catch (error) {
       console.error("Failed to fetch menu items:", error);
-      toast({ title: "Error Fetching Menu Items", description: "Could not load menu item data.", variant: "destructive" });
+      toast({ title: "خطا در بارگیری آیتم‌های منو", description: "نمی‌توان اطلاعات آیتم‌های منو را دریافت کرد.", variant: "destructive" });
       setMenuItems([]);
     } finally {
       setIsLoadingItems(false);
     }
-  }, [toast, searchTermItems, categories]); // Add categories to dependency array
+  }, [toast, searchTermItems, categories, currentRestaurant]);
 
   React.useEffect(() => {
     fetchCategories();
   }, [fetchCategories]);
 
   React.useEffect(() => {
-    if (categories.length > 0 || !isLoadingCategories) { // Fetch items once categories are loaded or attempt failed
+    if (categories.length > 0 || !isLoadingCategories) {
       fetchMenuItems();
     }
   }, [fetchMenuItems, categories, isLoadingCategories]);
@@ -85,9 +100,7 @@ export default function MenuPage() {
     setCurrentPageItems(1);
   }, 300), []);
 
-  // Client-side filtering for menu items (if API search is not sufficient or for combined filtering)
   const filteredMenuItems = React.useMemo(() => {
-    // API search handles basic term matching. Further client-side filtering can be added here if needed.
     return menuItems;
   }, [menuItems]);
 
@@ -99,8 +112,12 @@ export default function MenuPage() {
   const totalPagesItems = Math.ceil(filteredMenuItems.length / ITEMS_PER_PAGE);
 
   const handleAddMenuItem = () => {
+    if (!currentRestaurant) {
+      toast({ title: "رستوران انتخاب نشده", description: "لطفاً ابتدا یک رستوران انتخاب کنید.", variant: "destructive" });
+      return;
+    }
     if (categories.length === 0) {
-      toast({ title: "No Categories", description: "Please add a category before adding menu items.", variant: "destructive" });
+      toast({ title: "دسته‌بندی وجود ندارد", description: "لطفاً ابتدا یک دسته‌بندی اضافه کنید.", variant: "destructive" });
       return;
     }
     setEditingMenuItem(null);
@@ -116,58 +133,71 @@ export default function MenuPage() {
   };
 
   const handleSubmitMenuItemForm = async (formData: any) => {
+    if (!currentRestaurant) {
+      toast({ title: "خطا", description: "رستوران فعلی یافت نشد.", variant: "destructive" });
+      return;
+    }
+
     const params = new URLSearchParams();
     Object.keys(formData).forEach(key => {
       if (key !== 'id' && formData[key] !== undefined && formData[key] !== null) {
         params.append(key, formData[key]);
       }
     });
+    params.append('restaurantId', currentRestaurant.id);
 
     try {
-      if (formData.id) { // Editing existing item
+      if (formData.id) {
         await axiosInstance.patch(`/menu/items/${formData.id}`, params, {
           headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
         });
-        toast({ title: "Menu Item Updated", description: `Item ${formData.title} has been updated.` });
-      } else { // Adding new item
+        toast({ title: "آیتم منو بروزرسانی شد", description: `آیتم ${formData.title} بروزرسانی شد.` });
+      } else {
         await axiosInstance.post("/menu/items", params, {
           headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
         });
-        toast({ title: "Menu Item Added", description: `Item ${formData.title} has been added.` });
+        toast({ title: "آیتم منو اضافه شد", description: `آیتم ${formData.title} اضافه شد.` });
       }
       setIsItemFormOpen(false);
       setEditingMenuItem(null);
       fetchMenuItems();
     } catch (error: any) {
-      const apiError = error.response?.data?.message || "An error occurred while saving the menu item.";
-      toast({ title: "Error", description: apiError, variant: "destructive" });
+      const apiError = error.response?.data?.message || "خطایی در ذخیره آیتم منو رخ داد.";
+      toast({ title: "خطا", description: apiError, variant: "destructive" });
     }
   };
 
   const handleDeleteMenuItem = async (id: string) => {
     try {
       await axiosInstance.delete(`/menu/items/${id}`);
-      toast({ title: "Menu Item Deleted", description: "The item has been deleted from the menu." });
+      toast({ title: "آیتم منو حذف شد", description: "آیتم از منو حذف شد." });
       fetchMenuItems();
     } catch (error: any) {
-      const apiError = error.response?.data?.message || "Could not delete the menu item.";
-      toast({ title: "Error Deleting Item", description: apiError, variant: "destructive" });
+      const apiError = error.response?.data?.message || "نمی‌توان آیتم منو را حذف کرد.";
+      toast({ title: "خطا در حذف آیتم", description: apiError, variant: "destructive" });
     }
   };
 
   // Category CRUD operations
   const handleAddCategory = async (categoryData: any) => {
+    if (!currentRestaurant) {
+      toast({ title: "خطا", description: "رستوران فعلی یافت نشد.", variant: "destructive" });
+      return;
+    }
+
     const params = new URLSearchParams();
     Object.keys(categoryData).forEach(key => params.append(key, categoryData[key]));
+    params.append('restaurantId', currentRestaurant.id);
+
     try {
       await axiosInstance.post("/menu/categories", params, {
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
       });
-      toast({ title: "Category Added", description: `Category ${categoryData.name} has been added.` });
+      toast({ title: "دسته‌بندی اضافه شد", description: `دسته‌بندی ${categoryData.name} اضافه شد.` });
       fetchCategories();
     } catch (error: any) {
-      const apiError = error.response?.data?.message || "Could not add category.";
-      toast({ title: "Error Adding Category", description: apiError, variant: "destructive" });
+      const apiError = error.response?.data?.message || "نمی‌توان دسته‌بندی را اضافه کرد.";
+      toast({ title: "خطا در افزودن دسته‌بندی", description: apiError, variant: "destructive" });
     }
   };
 
@@ -176,48 +206,65 @@ export default function MenuPage() {
     Object.keys(categoryData).forEach(key => {
       if (key !== 'id') params.append(key, categoryData[key]);
     });
+    if (currentRestaurant) {
+      params.append('restaurantId', currentRestaurant.id);
+    }
+
     try {
       await axiosInstance.patch(`/menu/categories/${categoryData.id}`, params, {
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
       });
-      toast({ title: "Category Updated", description: `Category ${categoryData.name} has been updated.` });
-      fetchCategories(); // Also refetch menu items if category names changed
+      toast({ title: "دسته‌بندی بروزرسانی شد", description: `دسته‌بندی ${categoryData.name} بروزرسانی شد.` });
+      fetchCategories();
       fetchMenuItems();
     } catch (error: any) {
-      const apiError = error.response?.data?.message || "Could not update category.";
-      toast({ title: "Error Updating Category", description: apiError, variant: "destructive" });
+      const apiError = error.response?.data?.message || "نمی‌توان دسته‌بندی را بروزرسانی کرد.";
+      toast({ title: "خطا در بروزرسانی دسته‌بندی", description: apiError, variant: "destructive" });
     }
   };
 
   const handleDeleteCategory = async (categoryId: string) => {
     const isInUse = menuItems.some(item => item.categoryId === categoryId);
     if (isInUse) {
-      toast({ title: "Cannot Delete Category", description: "This category is assigned to menu items. Please reassign or delete them first.", variant: "destructive" });
+      toast({ title: "نمی‌توان دسته‌بندی را حذف کرد", description: "این دسته‌بندی به آیتم‌های منو اختصاص داده شده. لطفاً ابتدا آنها را تغییر دهید یا حذف کنید.", variant: "destructive" });
       return;
     }
     try {
       await axiosInstance.delete(`/menu/categories/${categoryId}`);
-      toast({ title: "Category Deleted", description: "The category has been deleted." });
+      toast({ title: "دسته‌بندی حذف شد", description: "دسته‌بندی حذف شد." });
       fetchCategories();
     } catch (error: any) {
-      const apiError = error.response?.data?.message || "Could not delete category.";
-      toast({ title: "Error Deleting Category", description: apiError, variant: "destructive" });
+      const apiError = error.response?.data?.message || "نمی‌توان دسته‌بندی را حذف کرد.";
+      toast({ title: "خطا در حذف دسته‌بندی", description: apiError, variant: "destructive" });
     }
   };
 
+  if (!currentRestaurant) {
+    return (
+      <div className="space-y-6">
+        <PageHeader title="مدیریت منو" description="مدیریت آیتم‌های منو و دسته‌بندی‌ها." />
+        <div className="text-center py-10">
+          <BookOpenText className="mx-auto h-12 w-12 text-muted-foreground" />
+          <h3 className="mt-2 text-sm font-medium text-foreground">رستورانی انتخاب نشده</h3>
+          <p className="mt-1 text-sm text-muted-foreground">برای مدیریت منو، لطفاً ابتدا یک رستوران انتخاب کنید.</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
-      <PageHeader title="Menu Management" description="Manage menu items and categories.">
+      <PageHeader title="مدیریت منو" description={`مدیریت منوی رستوران ${currentRestaurant.name}`}>
         <Button onClick={handleAddMenuItem}>
           <PlusCircle className="mr-2 h-4 w-4" />
-          Add Menu Item
+          افزودن آیتم منو
         </Button>
       </PageHeader>
 
       <Tabs defaultValue="items" className="space-y-4">
         <TabsList>
-          <TabsTrigger value="items"><ListOrdered className="mr-2 h-4 w-4" />Menu Items</TabsTrigger>
-          <TabsTrigger value="categories"><Tag className="mr-2 h-4 w-4" />Categories</TabsTrigger>
+          <TabsTrigger value="items"><ListOrdered className="mr-2 h-4 w-4" />آیتم‌های منو</TabsTrigger>
+          <TabsTrigger value="categories"><Tag className="mr-2 h-4 w-4" />دسته‌بندی‌ها</TabsTrigger>
         </TabsList>
 
         <TabsContent value="items" className="space-y-4">
@@ -225,7 +272,7 @@ export default function MenuPage() {
             <div className="relative w-full max-w-sm">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Search menu items (title, description)..."
+                placeholder="جستجو آیتم‌های منو (عنوان، توضیحات)..."
                 className="pl-10"
                 onChange={(e) => debouncedItemsSearch(e.target.value)}
               />
@@ -248,14 +295,14 @@ export default function MenuPage() {
             />
           )}
           {menuItems.length > 0 && filteredMenuItems.length === 0 && !isLoadingItems && (
-            <p className="text-center text-muted-foreground py-4">No menu items found matching your search criteria.</p>
+            <p className="text-center text-muted-foreground py-4">هیچ آیتم منویی با معیارهای جستجو شما یافت نشد.</p>
           )}
           {menuItems.length === 0 && !isLoadingItems && (
             <div className="text-center py-10">
               <BookOpenText className="mx-auto h-12 w-12 text-muted-foreground" />
-              <h3 className="mt-2 text-sm font-medium text-foreground">No menu items yet</h3>
+              <h3 className="mt-2 text-sm font-medium text-foreground">هنوز آیتم منویی وجود ندارد</h3>
               <p className="mt-1 text-sm text-muted-foreground">
-                {categories.length === 0 ? "Please add a category first." : "Get started by adding a new menu item."}
+                {categories.length === 0 ? "لطفاً ابتدا یک دسته‌بندی اضافه کنید." : "با افزودن آیتم منو جدید شروع کنید."}
               </p>
             </div>
           )}

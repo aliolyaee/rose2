@@ -1,4 +1,4 @@
-
+// src/components/layout/app-sidebar.tsx
 "use client";
 
 import Link from "next/link";
@@ -23,11 +23,13 @@ import {
   Image as ImageIcon,
   LogOut,
   ChefHat,
+  Building,
 } from "lucide-react";
 import { logout } from "@/lib/auth";
 import { useRouter } from "next/navigation";
 import type { User } from "@/types";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { RestaurantSelector } from "./restaurant-selector";
 
 interface AppSidebarProps {
   user: User | null;
@@ -35,6 +37,7 @@ interface AppSidebarProps {
 
 const navItems = [
   { href: "/dashboard", label: "داشبورد", icon: LayoutDashboard },
+  { href: "/restaurants", label: "رستوران‌ها", icon: Building },
   { href: "/users", label: "کاربران", icon: Users },
   { href: "/tables", label: "میزها", icon: Archive },
   { href: "/reservations", label: "رزروها", icon: CalendarCheck },
@@ -62,7 +65,7 @@ export default function AppSidebar({ user }: AppSidebarProps) {
   }
 
   return (
-    <Sidebar collapsible="icon" variant="sidebar" className="border-l right-0"> {/* border-r becomes border-l for RTL */}
+    <Sidebar collapsible="icon" variant="sidebar" className="border-l right-0">
       <SidebarHeader className="p-4 flex items-center gap-2 justify-between">
         <div className="flex items-center gap-2 group-data-[collapsible=icon]:hidden">
           <ChefHat className="h-8 w-8 text-primary" />
@@ -70,6 +73,12 @@ export default function AppSidebar({ user }: AppSidebarProps) {
         </div>
         <SidebarTrigger className="md:hidden" />
       </SidebarHeader>
+
+      {/* Restaurant Selector */}
+      <div className="px-4 pb-2 group-data-[collapsible=icon]:hidden">
+        <RestaurantSelector />
+      </div>
+
       <SidebarContent className="flex-1 overflow-y-auto p-2">
         <SidebarMenu>
           {navItems.map((item) => (
@@ -106,7 +115,7 @@ export default function AppSidebar({ user }: AppSidebarProps) {
           aria-label="خروج"
           title="خروج"
         >
-          <LogOut className="ml-2 h-5 w-5 group-data-[collapsible=icon]:ml-0" /> {/* mr-2 becomes ml-2 */}
+          <LogOut className="ml-2 h-5 w-5 group-data-[collapsible=icon]:ml-0" />
           <span className="group-data-[collapsible=icon]:hidden">خروج</span>
         </Button>
       </SidebarFooter>

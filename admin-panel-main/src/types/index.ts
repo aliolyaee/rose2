@@ -1,4 +1,4 @@
-
+// src/types/index.ts
 export interface User {
   id: string;
   fullName: string;
@@ -9,6 +9,14 @@ export interface User {
   createdAt?: string;
 }
 
+export interface Restaurant {
+  id: string;
+  name: string;
+  description?: string;
+  tableIds: string[]; // حذف optional کردن
+  createdAt?: string;
+}
+
 export interface Table {
   id: string;
   name: string;
@@ -16,6 +24,7 @@ export interface Table {
   capacity: number;
   photo?: string;
   status?: 'available' | 'occupied' | 'reserved' | 'maintenance' | string;
+  restaurantId?: string;
   createdAt?: string;
 }
 
@@ -30,6 +39,7 @@ export interface Reservation {
   phone: string; // from API
   description?: string; // from API (might include customer name)
   status?: 'confirmed' | 'pending' | 'cancelled' | 'completed' | string;
+  restaurantId?: string;
   createdAt?: string;
 
   // UI specific fields, not directly sent/received unless mapped
@@ -47,16 +57,17 @@ export interface MenuItem {
   available: boolean; // Availability status
   categoryId: string;
   categoryName?: string; // To be populated client-side
+  restaurantId?: string;
   createdAt?: string; // API might provide this
 }
 
-// Corresponds to API: name, icon (URL)
+// Corresponds to API: name, icon (URL), restaurantId
 export interface Category {
   id: string;
   name: string;
   icon?: string; // URL to icon image
+  restaurantId?: string; // Added for restaurant scoping
   createdAt?: string; // API might provide this
-  // description field removed as it's not in API spec
 }
 
 // Corresponds to API: name, alt, image (URL or base64 data)
