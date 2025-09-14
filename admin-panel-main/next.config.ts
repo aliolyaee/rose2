@@ -8,7 +8,7 @@ const nextConfig: NextConfig = {
   eslint: {
     ignoreDuringBuilds: true,
   },
-    output: "standalone",
+  output: "standalone",
   images: {
     remotePatterns: [
       {
@@ -19,7 +19,7 @@ const nextConfig: NextConfig = {
       },
       {
         protocol: 'https',
-        hostname: 'api.menu.baniantourism.com',
+        hostname: 'rose.baniantourism.com/api',
         port: '',
         pathname: '/**',
       },
@@ -34,3 +34,4 @@ const nextConfig: NextConfig = {
 };
 
 export default nextConfig;
+

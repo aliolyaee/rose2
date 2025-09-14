@@ -1,0 +1,42 @@
+{
+    email ashzih2@gmail.com
+}
+
+# ======== MENU ========
+menu.baniantourism.com {
+    @api path /api/*
+    handle @api {
+        rewrite * /{path*}
+        reverse_proxy youtaab-backend:3000
+    }
+
+    @admin path /admin/*
+    handle @admin {
+        rewrite * /{path*}
+        reverse_proxy youtaab-admin:3002
+    }
+
+    handle {
+        reverse_proxy youtaab-frontend:5000
+    }
+}
+
+# ======== ROSE ========
+rose.baniantourism.com {
+
+    # Admin panel only on /admin
+    handle_path /admin* {
+        reverse_proxy 127.0.0.1:3006
+    }
+
+    # API only on /api
+    handle_path /api* {
+        reverse_proxy 127.0.0.1:3005
+    }
+
+    # All other routes -> frontend
+    handle {
+        reverse_proxy 127.0.0.1:3007
+    }
+}
+

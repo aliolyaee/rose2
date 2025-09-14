@@ -4,13 +4,13 @@ apps:
       https:
         listen: [":443"]
         routes:
-          # ======== YOUTAAB ========
+          # ======== MENU ========
           - match:
               - host: ["menu.baniantourism.com"]
             handle:
               - handler: subroute
                 routes:
-                  # /api/* -> youtaab-backend:3000 (strip /api)
+                  # /api/* -> youtaab-backend:3000
                   - match: [{ path: ["/api/*"] }]
                     handle:
                       - handler: rewrite
@@ -18,7 +18,7 @@ apps:
                       - handler: reverse_proxy
                         upstreams: [{ dial: "youtaab-backend:3000" }]
                     terminal: true
-                  # /admin/* -> youtaab-admin:3002 (strip /admin)
+                  # /admin/* -> youtaab-admin:3002
                   - match: [{ path: ["/admin/*"] }]
                     handle:
                       - handler: rewrite
@@ -26,7 +26,7 @@ apps:
                       - handler: reverse_proxy
                         upstreams: [{ dial: "youtaab-admin:3002" }]
                     terminal: true
-                  # everything else -> youtaab-frontend:5000
+                  # Everything else -> youtaab-frontend:5000
                   - handle:
                       - handler: reverse_proxy
                         upstreams: [{ dial: "youtaab-frontend:5000" }]
@@ -53,7 +53,7 @@ apps:
             handle:
               - handler: subroute
                 routes:
-                  # /api/* -> rose-backend:3000 (strip /api)
+                  # /api/* -> rose-backend:3000
                   - match: [{ path: ["/api/*"] }]
                     handle:
                       - handler: rewrite
@@ -61,7 +61,7 @@ apps:
                       - handler: reverse_proxy
                         upstreams: [{ dial: "rose-backend:3000" }]
                     terminal: true
-                  # /admin/* -> rose-admin:3002 (strip /admin)
+                  # /admin/* -> rose-admin:3002
                   - match: [{ path: ["/admin/*"] }]
                     handle:
                       - handler: rewrite
@@ -69,7 +69,7 @@ apps:
                       - handler: reverse_proxy
                         upstreams: [{ dial: "rose-admin:3002" }]
                     terminal: true
-                  # everything else -> rose-frontend:5000
+                  # Everything else -> rose-frontend:5000
                   - handle:
                       - handler: reverse_proxy
                         upstreams: [{ dial: "rose-frontend:5000" }]
@@ -90,7 +90,7 @@ apps:
                 upstreams: [{ dial: "rose-admin:3002" }]
             terminal: true
 
-      # HTTP -> HTTPS redirect
+      # ======== HTTP -> HTTPS redirect ========
       http:
         listen: [":80"]
         routes:

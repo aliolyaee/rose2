@@ -4,5 +4,11 @@ import { AppService } from './app.service';
 @Controller()
 export class AppController {
   constructor(private readonly appService: AppService) {}
-
+    @Get("health")
+    health(){
+      return {
+          status: 200,
+          message: "app is running"
+      }
+    }
 }
