@@ -18,6 +18,7 @@ FROM node:20-alpine AS runner
 WORKDIR /app
 ENV NODE_ENV=production
 ENV NEXT_PUBLIC_API_URL=https://rose.baniantourism.com/api
+
 # Don't run as root
 RUN addgroup -g 1001 -S nodejs && adduser -S nextjs -u 1001
 

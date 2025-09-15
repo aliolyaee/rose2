@@ -29,7 +29,7 @@ services:
       PORT: "3000"
       DB: rose
       DBHOST: postgres
-      DBPORT: "5432"           # <-- fix
+      DBPORT: "5432"
       DBUSERNAME: postgres
       DBPASSWORD: postgres
       ACCESSTOKENJWT: c69fb1d897b2b67a8ee486af6c502d6fa93f66c0da428e23f45f2c5719b4944f
@@ -60,6 +60,10 @@ services:
       context: ./admin-panel-main
     ports:
       - "3006:3006"
+    environment:
+      NODE_ENV: production
+    env_file:
+      - ./admin-panel-main/.env
     restart: unless-stopped
     depends_on:
       backend:
